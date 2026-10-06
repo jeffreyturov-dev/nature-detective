@@ -29,11 +29,21 @@ PROMPT = """You are "Nature Detective", a kind nature guide for children aged 5-
 on a family hike. A child just photographed something outdoors.
 
 ABSOLUTE RULES (never break them):
-- Never invent a species. If you are not reasonably sure what is in the photo,
-  say so honestly ("I'm not sure — it looks like it could be...").
+- Never invent a species. If the photo is blurry, abstract, shows a person, a
+  manufactured object, or anything that is NOT clearly a living thing you
+  recognize, you MUST answer with "identified": false. A wrong guess is the
+  worst possible answer — saying "I'm not sure" is always better.
+- If you hesitate between two species, or the photo shows only a small or
+  unclear part of the organism, use "confidence": "low" and say what it COULD be.
 - NEVER encourage touching, picking or eating anything. Mushrooms and berries
   are ALWAYS "look-dont-touch", no exception.
 - Everything you say must be true and verifiable. No made-up facts.
+
+Example for a photo that does not clearly show a recognizable living thing:
+{"identified": false, "common_name": "", "latin_name": "", "type": "other",
+ "confidence": "low", "kid_fact": "", "safety": "unknown",
+ "mission": "one fun outdoor observation mission",
+ "quiz_question": "", "quiz_answer": false}
 
 Answer ONLY with this JSON object, no markdown, no commentary:
 {
@@ -50,6 +60,24 @@ Answer ONLY with this JSON object, no markdown, no commentary:
 }"""
 
 
+VERIFY_PROMPT = """You are a fact-checker for a children's nature app.
+Another model looked at this photo and claimed it shows: {claim}.
+
+Apply the "nature walk" standard — this is education on a hike, not surgery:
+- CONFIRM if the claim is plausible and consistent with what is actually
+  visible: the described organism is clearly the main subject, its visible
+  features match the claim, and teaching this to a child would be reasonable.
+- REJECT only when the claim is clearly wrong, when the photo does not show
+  a recognizable living thing at all (abstract, empty, object, person), or
+  when what's visible is obviously something else than the claim.
+
+Do NOT reject just because you personally might have named it differently at
+species level — a correct genus or close common name is good enough.
+
+Answer ONLY with this JSON, no markdown:
+{{"confirmed": true or false, "reason": "one short sentence"}}"""
+
+
 def get_db():
     con = sqlite3.connect(DB)
     con.execute(
@@ -62,25 +90,55 @@ def get_db():
     return con
 
 
-def ollama_vision(image_b64: str) -> dict:
+def _ollama_call(prompt: str, image_b64: str, num_predict: int = 450) -> str:
     body = json.dumps({
         "model": MODEL,
-        "prompt": PROMPT,
+        "prompt": prompt,
         "images": [image_b64],
         "stream": False,
-        "options": {"temperature": 0.2, "num_predict": 450},
+        "options": {"temperature": 0.2, "num_predict": num_predict},
     }).encode()
     req = urllib.request.Request(
         OLLAMA, data=body, headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=300) as r:
-        raw = json.loads(r.read())["response"]
+        return json.loads(r.read())["response"]
+
+
+def _extract_json(raw: str) -> dict:
     m = re.search(r"\{.*\}", raw, re.S)
     if not m:
         raise ValueError(f"no JSON in model output: {raw[:300]}")
-    data = json.loads(m.group(0))
+    return json.loads(m.group(0))
+
+
+def ollama_vision(image_b64: str) -> dict:
+    data = _extract_json(_ollama_call(PROMPT, image_b64))
     # Hard safety net — the model's rules are prompt-level; these are code-level.
     if str(data.get("type", "")).lower() in ("mushroom", "berry", "berries"):
         data["safety"] = "look-dont-touch"
+
+    # Second pass: a verifier whose only job is to doubt the first answer.
+    if data.get("identified"):
+        claim = f"{data.get('common_name','')} ({data.get('latin_name','')})"
+        try:
+            check = _extract_json(_ollama_call(
+                VERIFY_PROMPT.format(claim=claim), image_b64, num_predict=120))
+            data["verified"] = bool(check.get("confirmed"))
+            data["verify_reason"] = str(check.get("reason", ""))[:200]
+            if not data["verified"]:
+                data.update({
+                    "identified": False,
+                    "kid_fact": ("A first guess said this might be "
+                                 + str(data.get("common_name", "something"))
+                                 + ", but my double-check disagreed — and a good "
+                                   "detective never teaches a maybe as a fact. "
+                                   "Ask a grown-up or a field guide!"),
+                    "common_name": "", "latin_name": "", "confidence": "low",
+                    "safety": "look-dont-touch",
+                    "quiz_question": "", "quiz_answer": False,
+                })
+        except Exception:
+            data["verified"] = None  # verifier unreachable — keep 1st answer
     return data
 
 

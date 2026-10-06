@@ -171,10 +171,10 @@ function renderResult(r,file){
     $('r-latin').textContent=r.latin_name||'';
     $('r-unsure').style.display='none';
   }
-  const safe=(r.safety||'').includes('dont-touch');
+  const safe=(r.safety||'')==='safe';
   const b=$('r-badge');
-  b.className='badge '+(safe?'care':'safe');
-  b.textContent=safe?'👀 Look, don\'t touch':'✅ Safe to observe up close';
+  b.className='badge '+(safe?'safe':'care');
+  b.textContent=safe?'✅ Safe to observe up close':'👀 Look, don\'t touch';
   $('r-fact').textContent='💡 '+(r.kid_fact||'');
   $('r-mission').textContent=r.mission||'Find two more living things and snap them!';
   $('r-quiz').textContent=r.quiz_question||'';

@@ -1,7 +1,7 @@
 #!/bin/bash
 cd /opt/data/projet/nature-detective/app
-pkill -f "nature-detective/app" 2>/dev/null
-sleep 1
+fuser -k 8347/tcp 2>/dev/null
+sleep 2
 python3 server.py > server.log 2>&1 &
 echo "PID $!"
 sleep 4
