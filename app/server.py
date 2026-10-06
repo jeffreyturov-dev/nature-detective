@@ -63,19 +63,20 @@ Answer ONLY with this JSON object, no markdown, no commentary:
 VERIFY_PROMPT = """You are a fact-checker for a children's nature app.
 Another model looked at this photo and claimed it shows: {claim}.
 
-Apply the "nature walk" standard — this is education on a hike, not surgery:
-- CONFIRM if the claim is plausible and consistent with what is actually
-  visible: the described organism is clearly the main subject, its visible
-  features match the claim, and teaching this to a child would be reasonable.
-- REJECT only when the claim is clearly wrong, when the photo does not show
-  a recognizable living thing at all (abstract, empty, object, person), or
-  when what's visible is obviously something else than the claim.
-
-Do NOT reject just because you personally might have named it differently at
-species level — a correct genus or close common name is good enough.
+Do NOT judge the claim yet. Work in two steps, in this order:
+1. First, describe in one sentence what you OBJECTIVELY see in the photo,
+   as if nobody had told you anything about it. If the photo does not clearly
+   show a recognizable living thing (abstract, blurry, object, person),
+   your description must say so plainly.
+2. Only then, decide: is the claim consistent with YOUR OWN description?
+   - CONFIRM if your description independently matches the claimed organism
+     (a correct common name or close relative is good enough for a nature walk).
+   - REJECT if your description is of something else, or of nothing
+     recognizable — a child must never be taught a guess as a fact.
 
 Answer ONLY with this JSON, no markdown:
-{{"confirmed": true or false, "reason": "one short sentence"}}"""
+{{"seen": "your one-sentence independent description",
+  "confirmed": true or false, "reason": "one short sentence"}}"""
 
 
 def get_db():

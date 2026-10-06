@@ -70,9 +70,7 @@ During testing, I fed the app an abstract watercolor — green and yellow blur, 
 
 It was a confident, detailed, completely fabricated answer. The most dangerous kind of wrong — the kind a child would believe, remember, and repeat at school.
 
-An app that teaches nature to kids has one job that outranks every other: **never teach a lie.** So now every identification goes through a second pass — a verifier, running on the same local model, whose only job is to doubt the first answer:
-
-> *"Another model claimed this photo shows X. Apply the nature-walk standard: confirm if the claim is plausible and consistent with what's visible; reject if it's clearly wrong, or the photo shows no recognizable living thing at all."*
+An app that teaches nature to kids has one job that outranks every other: **never teach a lie.** So now every identification goes through a second pass — a verifier, running on the same local model, whose only job is to doubt the first answer. The trick that makes it actually work: the verifier **never sees the claim first**. It must describe what it objectively sees — *"The image is an abstract painting, not a living organism."* — and only then decide whether the claim matches its own independent observation. Ask it to judge the claim directly and it politely agrees with everything; make it commit to its own eyes first, and it catches the lie.
 
 The abstract painting now gets the honest answer: *"A first guess said this might be a spiderweb, but my double-check disagreed — and a good detective never teaches a maybe as a fact. Ask a grown-up or a field guide!"*
 
