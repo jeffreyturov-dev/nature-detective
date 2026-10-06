@@ -1,0 +1,5 @@
+data/
+test/
+*.log
+__pycache__/
+assets/tmp/
